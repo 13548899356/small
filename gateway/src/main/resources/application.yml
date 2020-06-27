@@ -1,0 +1,89 @@
+server:
+  #\u6B64\u5904\u76845000\u7AEF\u53E3\u53F7\uFF0C\u5C31\u597D\u50CF\u4EE5\u524D\u5916\u7F6E\u7684tomcat\u76848080\uFF0C\u8BA9\u6211\u4EEC\u901A\u8FC7\u6D4F\u89C8\u5668\u8FDB\u884C\u8BBF\u95EE
+  #\u4F46\u6B64\u670D\u52A1\u53EA\u662F\u505A\u4E86\u4E00\u4E2A\u8DEF\u7531\uFF0C\u5B83\u4F1A\u5C06\u8BF7\u6C42\u8DEF\u7531\u5230\u5176\u5B83\u5FAE\u670D\u52A1(\u4E00\u822C\u662F\u6D88\u8D39\u8005)\u8FDB\u884C\u5904\u7406
+  port: 5000
+
+spring:
+  application:
+    #\u5FAE\u670D\u52A1\u540D
+    name: gateway-server
+  cloud:
+    nacos:
+      discovery:
+        #\u6307\u5B9Anacos\u6CE8\u518C\u4E2D\u5FC3\u7684\u5730\u5740
+        server-addr: zking.com:8848
+    gateway:
+      discovery:
+        locator:
+          #\u662F\u5426\u4E0E\u670D\u52A1\u53D1\u73B0\u7EC4\u4EF6\u8FDB\u884C\u7ED3\u5408\uFF0C\u901A\u8FC7serviceId(\u5FC5\u987B\u8BBE\u7F6E\u6210\u5927\u5199)\u8F6C\u53D1\u5230\u5177\u4F53\u7684\u670D\u52A1\u5B9E\u4F8B\u3002\u9ED8\u8BA4false
+          #\u4E3Atrue\u4EE3\u8868\u5F00\u542F\u57FA\u4E8E\u670D\u52A1\u53D1\u73B0\u7684\u8DEF\u7531\u89C4\u5219\u3002
+          #\u4E4B\u524D\u9ED8\u8BA4\u7684\u89C4\u5219\u5C31\u4E0D\u80FD\u8BBF\u95EE\u4E86
+          enabled: false
+          #\u914D\u7F6E\u4E4B\u540E\u8BBF\u95EE\u65F6serviceId\u65E0\u9700\u5927\u5199
+          lower-case-service-id: true
+      # \u8DEF\u7531\uFF08routes\uFF1A\u8DEF\u7531\uFF0C\u5B83\u7531\u552F\u4E00\u6807\u8BC6\uFF08ID\uFF09\u3001\u76EE\u6807\u670D\u52A1\u5730\u5740\uFF08uri\uFF09\u3001\u4E00\u7EC4\u65AD\u8A00\uFF08predicates\uFF09\u548C\u4E00\u7EC4\u8FC7\u6EE4\u5668\u7EC4\u6210\uFF08filters\uFF09\u3002filters \u4E0D\u662F\u5FC5\u9700\u53C2\u6570\u3002\uFF09
+      routes:
+        # http://localhost:5000/usr/hello
+        #\u8DEF\u7531\u6807\u8BC6\uFF08id\uFF1A\u6807\u8BC6\uFF0C\u5177\u6709\u552F\u4E00\u6027\uFF09
+        - id: bank-router
+          #\u76EE\u6807\u670D\u52A1\u5730\u5740\uFF08uri\uFF1A\u5730\u5740\uFF0C\u8BF7\u6C42\u8F6C\u53D1\u540E\u7684\u5730\u5740\uFF09\uFF0C\u4F1A\u81EA\u52A8\u4ECE\u6CE8\u518C\u4E2D\u5FC3\u83B7\u5F97\u670D\u52A1\u7684IP\uFF0C\u4E0D\u9700\u8981\u624B\u52A8\u5199\u6B7B
+          uri: lb://nacos-consumer
+          #\u4F18\u5148\u7EA7\uFF0C\u8D8A\u5C0F\u8D8A\u4F18\u5148
+          #order: 999
+          #\u8DEF\u7531\u6761\u4EF6\uFF08predicates\uFF1A\u65AD\u8A00\uFF09
+          predicates:
+            # \u8DEF\u5F84\u5339\u914D\uFF0C
+            - Path=/student/**
+            #\u7194\u65AD\u5668\u5B9A\u4E49
+          filters:
+            - name: Hystrix
+              args:
+                name: fallback
+                fallbackUri: forward:/fallback
+            - name: RequestRateLimiter
+              args:
+                #\u7528\u4E8E\u9650\u6D41\u7684\u952E\u7684\u89E3\u6790\u5668\u7684 Bean \u5BF9\u8C61\u7684\u540D\u5B57,\u4F7F\u7528 SpEL\u8868\u8FBE\u5F0F\u6839\u636E#{@beanName}\u83B7\u53D6Bean\u5BF9\u8C61
+                key-resolver: '#{@ipAddrKeyResolver}'
+                #\u4EE4\u724C\u6876\u586B\u5145\u901F\u7387\uFF0C\u5141\u8BB8\u7528\u6237\u6BCF\u79D2\u5904\u7406\u591A\u5C11\u4E2A\u8BF7\u6C42
+                redis-rate-limiter.replenishRate: 20
+                #\u4EE4\u724C\u6876\u603B\u5BB9\u91CF\uFF0C\u5141\u8BB8\u5728\u4E00\u79D2\u949F\u5185\u5B8C\u6210\u7684\u6700\u5927\u8BF7\u6C42\u6570
+                redis-rate-limiter.burstCapacity: 100
+            - StripPrefix=1
+  redis:
+    host: 192.168.68.136
+    port: 6379
+    password: 123
+    database: 0
+
+ribbon:
+  eager-load:
+    enabled: true
+    clients: user-service-api
+
+
+logging:
+  level:
+    #\u5F00\u542Fspring-Cloud-gateway\u7684\u65E5\u5FD7\u7EA7\u522B\u4E3Adebug\uFF0C\u65B9\u4FBFdebug\u8C03\u8BD5
+    org.springframework.cloud.gateway: trace
+    org.springframework.http.server.reactive: debug
+    org.springframework.web.reactive: debug
+    reactor.ipc.netty: debug
+
+#springboot\u76D1\u63A7Actuator\uFF0C\u66B4\u9732\u6240\u6709\u7AEF\u70B9
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
+
+#\u81EA\u5B9A\u4E49\u914D\u7F6E
+gateway:
+  nacos:
+    server-addr: ${spring.cloud.nacos.discovery.server-addr}
+    #    namespace: 558dc9bc-a775-41ad-9f26-43ca3aa73e6b
+    data-id: dynamic-routing.json
+    group: DEFAULT_GROUP
+
+
+
